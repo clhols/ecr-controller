@@ -1,0 +1,147 @@
+package com.mobilepay.pos.ecr
+
+import com.fazecast.jSerialComm.SerialPort
+import com.fazecast.jSerialComm.SerialPort.NO_PARITY
+import com.fazecast.jSerialComm.SerialPort.ONE_STOP_BIT
+import com.fazecast.jSerialComm.SerialPortDataListener
+import com.fazecast.jSerialComm.SerialPortEvent
+import java.io.IOException
+import kotlin.experimental.xor
+
+/**
+ * For simulating an Electronic Cash Register and controlling the Verifone Nordic payment terminal.
+ */
+class PointFinlandEcrController {
+
+    val STX: Byte = 0x2
+    val ETX: Byte = 0x3
+    val ENQ: Byte = 0x5
+    val ACK: Byte = 0x6
+
+    private var comPort: SerialPort
+    private var purchaseInitiated: Boolean = false
+    private var amountCents: Int = 0
+    private val verboseLogging = true
+
+    init {
+        val commPorts = SerialPort.getCommPorts()
+        comPort = commPorts.first { it.systemPortName.startsWith("tty.usbmodem") }
+
+        comPort.setComPortParameters(19200, 8, ONE_STOP_BIT, NO_PARITY)
+        if (comPort.openPort()) {
+            println("Opened com port ${comPort.systemPortName}")
+
+            comPort.addDataListener(object : SerialPortDataListener {
+                override fun serialEvent(event: SerialPortEvent) {
+                    if (event.eventType != SerialPort.LISTENING_EVENT_DATA_AVAILABLE) return
+
+                    val newData = ByteArray(comPort.bytesAvailable())
+                    val numRead = comPort.readBytes(newData, newData.size.toLong())
+                    if (verboseLogging) println("Read $numRead byte(s): ${newData.asList()}")
+                    sendAck()
+
+                    if (newData.lastOrNull() == ACK) {
+                        println("Got ACK")
+                        if (!purchaseInitiated) {
+                            sendPurchaseInitiate(amountCents)
+                        }
+                    }
+                }
+
+                override fun getListeningEvents() = SerialPort.LISTENING_EVENT_DATA_AVAILABLE
+            })
+        } else {
+            println("Unable to open com port")
+            throw IOException("Unable to open com port")
+        }
+    }
+
+    fun initiatePurchase(amountCents: Int) {
+        this.amountCents = amountCents
+        purchaseInitiated = false
+        writeBytes(byteArrayOf(ENQ))
+    }
+
+    private fun sendAck() {
+        writeBytes(byteArrayOf(ACK))
+    }
+
+    private fun sendPurchaseInitiate(amountCents: Int) {
+        val amountPadded = "$amountCents".padStart(7, '0')
+        val stx = byteArrayOf(STX)
+        val dataAndEtx = byteArrayOf(0x58, 0x30) + amountPadded.toByteArray() +
+                byteArrayOf(0x30, 0x30, 0x30, 0x30, 0x30, 0x30,
+                        0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0x1c, 0x30, 0x30, 0x30, 0x30, 0x30,
+                        0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30,
+                        0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x46, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30,
+                        0x30, 0x30, 0x30, 0x30, ETX
+                )
+
+        writeBytes(stx)
+        writeBytes(dataAndEtx)
+
+        val lrc = calculateLrc(dataAndEtx)
+        if (verboseLogging) println("Calculated LRC is ${lrc.firstOrNull()}")
+
+        writeBytes(lrc)
+
+        purchaseInitiated = true
+        println("Purchase initiate send!")
+    }
+
+    fun sendStop() {
+        println("Sending stop")
+
+        val stx = byteArrayOf(STX)
+        val dataAndEtx = byteArrayOf(0x37, 0x32, ETX)
+
+        writeBytes(stx)
+        writeBytes(dataAndEtx)
+
+        val lrc = calculateLrc(dataAndEtx)
+        if (verboseLogging) println("Calculated LRC is ${lrc.firstOrNull()}")
+
+        writeBytes(lrc)
+    }
+
+    /**
+     * Sends the ReadersControl message with the "CloseReaders" Control command.
+     */
+    fun sendCancel() {
+        println("Sending cancel")
+
+        val stx = byteArrayOf(STX)
+        val dataAndEtx = "o0                         ".toByteArray() + byteArrayOf(ETX)
+
+        writeBytes(stx)
+        writeBytes(dataAndEtx)
+
+        val lrc = calculateLrc(dataAndEtx)
+        if (verboseLogging) println("Calculated LRC is ${lrc.firstOrNull()}")
+
+        writeBytes(lrc)
+    }
+
+    private fun writeBytes(data: ByteArray) {
+        if (comPort.isOpen) {
+            val bytesWritten = comPort.writeBytes(data, data.size.toLong())
+            if (bytesWritten == -1) {
+                println("Unable to write message")
+                throw IOException("Unable to write message")
+            }
+        } else {
+            throw IOException("Com port not open")
+        }
+    }
+
+    private fun calculateLrc(data: ByteArray): ByteArray {
+        return byteArrayOf(
+                data.fold(0.toByte()) { accumulated, current ->
+                    accumulated xor current
+                })
+    }
+
+    fun close() {
+        comPort.closePort()
+    }
+}

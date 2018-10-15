@@ -1,6 +1,6 @@
 @file:JvmName("Main")
 
-package com.mobilepay.pos.ecr
+package dk.youtec.pos.ecr
 
 fun main(args: Array<String>) {
     println("Point Finland ECR controller!")

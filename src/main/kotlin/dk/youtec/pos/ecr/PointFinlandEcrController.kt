@@ -1,4 +1,4 @@
-package com.mobilepay.pos.ecr
+package dk.youtec.pos.ecr
 
 import com.fazecast.jSerialComm.SerialPort
 import com.fazecast.jSerialComm.SerialPort.NO_PARITY

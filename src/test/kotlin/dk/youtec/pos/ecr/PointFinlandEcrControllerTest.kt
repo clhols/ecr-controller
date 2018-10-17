@@ -1,6 +1,5 @@
 package dk.youtec.pos.ecr
 
-import dk.youtec.pos.ecr.PointFinlandEcrController
 import org.junit.Test
 
 class PointFinlandEcrControllerTest {

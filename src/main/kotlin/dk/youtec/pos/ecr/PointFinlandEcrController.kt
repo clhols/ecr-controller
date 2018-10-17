@@ -14,12 +14,12 @@ import kotlin.experimental.xor
  */
 class PointFinlandEcrController {
 
-    val STX: Byte = 0x2
-    val ETX: Byte = 0x3
-    val ENQ: Byte = 0x5
-    val ACK: Byte = 0x6
+    private val stx: Byte = 0x2
+    private val etx: Byte = 0x3
+    private val enq: Byte = 0x5
+    private val ack: Byte = 0x6
 
-    private var comPort: SerialPort
+    private val comPort: SerialPort
     private var purchaseInitiated: Boolean = false
     private var amountCents: Int = 0
     private val verboseLogging = true
@@ -27,7 +27,7 @@ class PointFinlandEcrController {
     init {
         val commPorts = SerialPort.getCommPorts()
         comPort = commPorts.firstOrNull { it.systemPortName.startsWith("tty.usbmodem") }
-        ?: throw RuntimeException("No terminal found")
+                ?: throw RuntimeException("No terminal found")
 
         comPort.setComPortParameters(19200, 8, ONE_STOP_BIT, NO_PARITY)
         if (comPort.openPort()) {
@@ -40,10 +40,10 @@ class PointFinlandEcrController {
                     val newData = ByteArray(comPort.bytesAvailable())
                     val numRead = comPort.readBytes(newData, newData.size.toLong())
                     if (verboseLogging) println("Read $numRead byte(s): ${newData.asList()}")
-                    sendAck()
+                    send(ack)
 
-                    if (newData.lastOrNull() == ACK) {
-                        println("Got ACK")
+                    if (newData.lastOrNull() == ack) {
+                        println("Got ack")
                         if (!purchaseInitiated) {
                             sendPurchaseInitiate(amountCents)
                         }
@@ -61,31 +61,12 @@ class PointFinlandEcrController {
     fun initiatePurchase(amountCents: Int) {
         this.amountCents = amountCents
         purchaseInitiated = false
-        writeBytes(byteArrayOf(ENQ))
-    }
-
-    private fun sendAck() {
-        writeBytes(byteArrayOf(ACK))
+        send(enq)
     }
 
     private fun sendPurchaseInitiate(amountCents: Int) {
         val amountPadded = "$amountCents".padStart(7, '0')
-        val stx = byteArrayOf(STX)
-        val dataAndEtx = byteArrayOf(0x58, 0x30) + amountPadded.toByteArray() +
-                byteArrayOf(0x30, 0x30, 0x30, 0x30, 0x30, 0x30,
-                        0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0x1c, 0x30, 0x30, 0x30, 0x30, 0x30,
-                        0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30,
-                        0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x46, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30,
-                        0x30, 0x30, 0x30, 0x30, ETX
-                )
-
-        writeBytes(stx)
-        writeBytes(dataAndEtx)
-
-        val lrc = calculateLrc(dataAndEtx)
-        if (verboseLogging) println("Calculated LRC is ${lrc.firstOrNull()}")
-
-        writeBytes(lrc)
+        send(stx, *"X0${amountPadded}000000000000001${0x1c}000000000000000000000000000F00000000000$etx".addLrc())
 
         purchaseInitiated = true
         println("Purchase initiate send!")
@@ -93,38 +74,17 @@ class PointFinlandEcrController {
 
     fun sendStop() {
         println("Sending stop")
-
-        val stx = byteArrayOf(STX)
-        val dataAndEtx = byteArrayOf(0x37, 0x32, ETX)
-
-        writeBytes(stx)
-        writeBytes(dataAndEtx)
-
-        val lrc = calculateLrc(dataAndEtx)
-        if (verboseLogging) println("Calculated LRC is ${lrc.firstOrNull()}")
-
-        writeBytes(lrc)
+        send(stx, *"72$etx".addLrc())
     }
-
     /**
      * Sends the ReadersControl message with the "CloseReaders" Control command.
      */
     fun sendCancel() {
         println("Sending cancel")
-
-        val stx = byteArrayOf(STX)
-        val dataAndEtx = "o0                         ".toByteArray() + byteArrayOf(ETX)
-
-        writeBytes(stx)
-        writeBytes(dataAndEtx)
-
-        val lrc = calculateLrc(dataAndEtx)
-        if (verboseLogging) println("Calculated LRC is ${lrc.firstOrNull()}")
-
-        writeBytes(lrc)
+        send(stx, *"o0                         $etx".addLrc())
     }
 
-    private fun writeBytes(data: ByteArray) {
+    private fun send(vararg data: Byte) {
         if (comPort.isOpen) {
             val bytesWritten = comPort.writeBytes(data, data.size.toLong())
             if (bytesWritten == -1) {
@@ -136,14 +96,11 @@ class PointFinlandEcrController {
         }
     }
 
-    private fun calculateLrc(data: ByteArray): ByteArray {
-        return byteArrayOf(
-                data.fold(0.toByte()) { accumulated, current ->
-                    accumulated xor current
-                })
+    private fun String.addLrc(): ByteArray = toByteArray() + calculateLrc(toByteArray())
+
+    private fun calculateLrc(data: ByteArray) = data.fold(0.toByte()) { accumulated, current ->
+        accumulated xor current
     }
 
-    fun close() {
-        comPort.closePort()
-    }
+    fun close() = comPort.closePort()
 }

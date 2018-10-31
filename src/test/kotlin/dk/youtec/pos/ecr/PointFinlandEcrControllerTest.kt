@@ -15,6 +15,10 @@ class PointFinlandEcrControllerTest {
 
         Thread.sleep(2000)
 
+        controller.sendCancel()
+
+        Thread.sleep(2000)
+
         controller.close()
     }
 }

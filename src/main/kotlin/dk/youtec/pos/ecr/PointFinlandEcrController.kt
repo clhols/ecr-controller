@@ -79,6 +79,8 @@ class PointFinlandEcrController {
                         0x30, 0x30, 0x30, 0x30, ETX
                 )
 
+        println("Sending: " + String(dataAndEtx))
+
         writeBytes(stx)
         writeBytes(dataAndEtx)
 

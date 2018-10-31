@@ -2,7 +2,10 @@
 
 package dk.youtec.pos.ecr
 
-fun main(args: Array<String>) {
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+
+suspend fun main(args: Array<String>) = coroutineScope {
     println("Point Finland ECR controller!")
 
     val amount = args.firstOrNull()?.toIntOrNull() ?: 0
@@ -10,15 +13,15 @@ fun main(args: Array<String>) {
     val controller = PointFinlandEcrController()
     controller.initiatePurchase(amount)
 
-    Thread.sleep(20000)
+    delay(20000)
 
     controller.sendStop()
 
-    Thread.sleep(2000)
+    delay(2000)
 
     controller.sendCancel()
 
-    Thread.sleep(2000)
+    delay(2000)
     controller.close()
 
     println("Done!")

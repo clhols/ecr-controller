@@ -14,10 +14,10 @@ import kotlin.experimental.xor
  */
 class PointFinlandEcrController {
 
-    val STX: Byte = 0x2
-    val ETX: Byte = 0x3
-    val ENQ: Byte = 0x5
-    val ACK: Byte = 0x6
+    private val stx: Byte = 0x2
+    private val etx: Byte = 0x3
+    private val enq: Byte = 0x5
+    private val ack: Byte = 0x6
 
     private var comPort: SerialPort
     private var purchaseInitiated: Boolean = false
@@ -42,8 +42,8 @@ class PointFinlandEcrController {
                     if (verboseLogging) println("Read $numRead byte(s): ${newData.asList()}")
                     sendAck()
 
-                    if (newData.lastOrNull() == ACK) {
-                        println("Got ACK")
+                    if (newData.lastOrNull() == ack) {
+                        println("Got ack")
                         if (!purchaseInitiated) {
                             sendPurchaseInitiate(amountCents)
                         }
@@ -61,22 +61,22 @@ class PointFinlandEcrController {
     fun initiatePurchase(amountCents: Int) {
         this.amountCents = amountCents
         purchaseInitiated = false
-        writeBytes(byteArrayOf(ENQ))
+        writeBytes(byteArrayOf(enq))
     }
 
     private fun sendAck() {
-        writeBytes(byteArrayOf(ACK))
+        writeBytes(byteArrayOf(ack))
     }
 
     private fun sendPurchaseInitiate(amountCents: Int) {
         val amountPadded = "$amountCents".padStart(7, '0')
-        val stx = byteArrayOf(STX)
+        val stx = byteArrayOf(stx)
         val dataAndEtx = byteArrayOf(0x58, 0x30) + amountPadded.toByteArray() +
                 byteArrayOf(0x30, 0x30, 0x30, 0x30, 0x30, 0x30,
                         0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0x1c, 0x30, 0x30, 0x30, 0x30, 0x30,
                         0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30,
                         0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x46, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30,
-                        0x30, 0x30, 0x30, 0x30, ETX
+                        0x30, 0x30, 0x30, 0x30, etx
                 )
 
         println("Sending: " + String(dataAndEtx))
@@ -96,8 +96,8 @@ class PointFinlandEcrController {
     fun sendStop() {
         println("Sending stop")
 
-        val stx = byteArrayOf(STX)
-        val dataAndEtx = byteArrayOf(0x37, 0x32, ETX)
+        val stx = byteArrayOf(stx)
+        val dataAndEtx = byteArrayOf(0x37, 0x32, etx)
 
         writeBytes(stx)
         writeBytes(dataAndEtx)
@@ -114,8 +114,8 @@ class PointFinlandEcrController {
     fun sendCancel() {
         println("Sending cancel")
 
-        val stx = byteArrayOf(STX)
-        val dataAndEtx = "o0                         ".toByteArray() + byteArrayOf(ETX)
+        val stx = byteArrayOf(stx)
+        val dataAndEtx = "o0                         ".toByteArray() + byteArrayOf(etx)
 
         writeBytes(stx)
         writeBytes(dataAndEtx)

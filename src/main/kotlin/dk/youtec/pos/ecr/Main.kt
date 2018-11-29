@@ -9,11 +9,12 @@ suspend fun main(args: Array<String>) = coroutineScope {
     println("Point Finland ECR controller!")
 
     val amount = args.firstOrNull()?.toIntOrNull() ?: 0
+    val delaySeconds = args.getOrNull(1)?.toInt() ?: 20
 
     val controller = PointFinlandEcrController()
     controller.initiatePurchase(amount)
 
-    delay(20000)
+    delay(delaySeconds * 1000L)
 
     controller.sendStop()
 

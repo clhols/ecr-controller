@@ -21,8 +21,8 @@ repositories {
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion"
     compile "com.fazecast:jSerialComm:2.2.0"
-    compile "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.0.0"
-    testCompile "junit:junit:4.12"
+    compile "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.0.1"
+    testCompile "org.junit.jupiter:junit-jupiter-api:5.3.1"
 }
 
 compileKotlin {

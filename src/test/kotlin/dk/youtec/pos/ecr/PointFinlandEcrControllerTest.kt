@@ -1,6 +1,6 @@
 package dk.youtec.pos.ecr
 
-import org.junit.Test
+import org.junit.jupiter.api.Test
 
 class PointFinlandEcrControllerTest {
 

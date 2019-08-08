@@ -6,7 +6,7 @@ import com.fazecast.jSerialComm.SerialPort.ONE_STOP_BIT
 import com.fazecast.jSerialComm.SerialPortDataListener
 import com.fazecast.jSerialComm.SerialPortEvent
 import java.io.IOException
-import java.lang.RuntimeException
+import kotlin.RuntimeException
 import kotlin.experimental.xor
 
 /**

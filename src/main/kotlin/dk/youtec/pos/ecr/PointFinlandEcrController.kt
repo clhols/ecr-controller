@@ -38,7 +38,7 @@ class PointFinlandEcrController {
                     if (event.eventType != SerialPort.LISTENING_EVENT_DATA_AVAILABLE) return
 
                     val newData = ByteArray(comPort.bytesAvailable())
-                    val numRead = comPort.readBytes(newData, newData.size.toLong())
+                    val numRead = comPort.readBytes(newData, newData.size)
                     if (verboseLogging) println("Read $numRead byte(s): ${newData.asList()}")
                     sendAck()
 
@@ -128,7 +128,7 @@ class PointFinlandEcrController {
 
     private fun writeBytes(data: ByteArray) {
         if (comPort.isOpen) {
-            val bytesWritten = comPort.writeBytes(data, data.size.toLong())
+            val bytesWritten = comPort.writeBytes(data, data.size)
             if (bytesWritten == -1) {
                 println("Unable to write message")
                 throw IOException("Unable to write message")
